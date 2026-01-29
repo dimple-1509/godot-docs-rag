@@ -9,7 +9,9 @@ embeddings = HuggingFaceEmbeddings(
     model="sentence-transformers/all-MiniLM-L6-v2"
 )
 
-vectorstore = FAISS.load_local(INDEX_PATH,embeddings)
+vectorstore = FAISS.load_local(
+    INDEX_PATH,embeddings,allow_dangerous_deserialization = True
+    )
 
 llm = ChatGroq(
     model = "llama-3.1-8b-instant",
@@ -73,7 +75,7 @@ answer = runnable.invoke({
 
 
 print("\nFinal answer____\n")
-print(answer.content)
+print(answer.content,'\n',context_text)
 
 
 

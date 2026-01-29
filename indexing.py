@@ -35,6 +35,7 @@ def load_godot_docs():
                         all_text.append(f.read())
                 except Exception as e:
                     print(f"Skipped {file_path}: {e}")
+
     print("loaded godot docs")
     return "\n".join(all_text)
 
@@ -67,7 +68,7 @@ def chunks_into_embeddings(clean_chunks):
     embeddings = HuggingFaceEmbeddings(
         model="sentence-transformers/all-MiniLM-L6-v2"
     )
-    print("initialised embedding")
+    print("initialised embedding","documents size: ",len(documents))
 
 
     # vectorstore = FAISS.from_documents(documents,embeddings)
