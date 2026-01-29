@@ -5,77 +5,82 @@ from langchain_core.prompts import ChatPromptTemplate
 
 INDEX_PATH = "godot_index"
 
-embeddings = HuggingFaceEmbeddings(
-    model="sentence-transformers/all-MiniLM-L6-v2"
-)
 
-vectorstore = FAISS.load_local(
-    INDEX_PATH,embeddings,allow_dangerous_deserialization = True
+def model(question,INDEX_PATH = INDEX_PATH):
+    embeddingModel = HuggingFaceEmbeddings(
+        model = "sentence-transformers/all-MiniLM-L6-v2"
     )
 
-llm = ChatGroq(
-    model = "llama-3.1-8b-instant",
-    temperature = 0
-)
+    vectorDB = FAISS.load_local(
+        INDEX_PATH, embeddingModel, allow_dangerous_deserialization = True
+    )
 
-   
-question = "How to use animation tool in godot engine"
+    LLM = ChatGroq(
+        model = "llama-3.1-8b-instant",
+        temperature = 0
+    )
+
 
 # --- similarity search with scores ---
-docs_and_scores = vectorstore.similarity_search_with_score(question, k=3)
-   
+    docs_and_scores = vectorDB.similarity_search_with_score(question,k=3)
 
-#     SIMILARITY_THRESHOLD = 0.00  # you can tune this
+#  --- filtering based on similarity threshold ---
+    SIMILARITY_THRESHOLD = 0.4
 
-    # filtered_docs = [
-    #  doc for doc, score in docs_and_scores
-    #  if score < SIMILARITY_THRESHOLD
-    # ]
+    filtered_docs = [
+        doc for doc,score in docs_and_scores if score < SIMILARITY_THRESHOLD
+    ]
 
- # --- no relevant docs found ---
-#     if not filtered_docs:
-#       print("I don't know. This information is not present in my documents.")
-#       return
+# -- if no relevant docs found --- 
+    if not filtered_docs:
+        print(" I don't know. This information is not present in the provided documents. ")
+        return
 
-# --- build context ---
-context_text = "\n".join(item[0].page_content for item in docs_and_scores)
-
+# -- prepare context text ---
+    context_text = "\n".join(doc.page_content for doc in filtered_docs)
 
 
-# --- strict system prompt ---
-SYSTEM_PROMPT = """
-You are a retrieval-based assistant.
+# --- prompt template ---
+    SYSTEM_PROMPT = """
+    You are a retrieval - based assistant.
 
-RULES:
-- Answer ONLY using the provided context.
-- Search through the context provided properly and carefully
-- If the answer is not present in the context, say:
-  "I don't know based on the provided documents."
-- Do NOT use prior knowledge.
-- Do NOT guess.
+    RULES:
+    - Answer ONLY using the PROVIDED CONTEXT.
+    - Search through the context provided properly and carefully.
+    - If the answer is not present in the context, say:
+      "I don't know based on the provided documents. "
+    - Do NOT use prior knowledge.
+    - Do NOT guess.
 """
 
-prompt = ChatPromptTemplate.from_messages([
-     ("system", SYSTEM_PROMPT),
-     ("human", "Context:\n{context}\n\nQuestion:\n{question}")
-   ])
+# --- build prompt ---
+    prompt = ChatPromptTemplate.from_messages([
+        ("system",SYSTEM_PROMPT),
+        ("human","Context:\n{context}\n\nQuestion:\n{question}")
+    ])
 
-    # Build the prompt Runnable
-prompt_runnable = prompt
+    prompt_filled = prompt.format_prompt(
+        context = context_text,
+        question = question
+    )
 
-# Combine prompt Runnable with LLM 
-runnable = prompt_runnable | llm
-
-# Execute with invoke()
-print("calling the model for answer ")
-answer = runnable.invoke({
-      "context": context_text,
-      "question": question
-})
+    messages = prompt_filled.to_messages()
 
 
-print("\nFinal answer____\n")
-print(answer.content,'\n',context_text)
+# --- Get the answer from the LLM ---
+    answer = LLM.generate([messages])  
+
+    print("\n Final answer____\n")
+
+    print(answer.generations[0][0].text)
+
+
+
+if __name__ == "__main__":
+    user_question = input("Please enter your question about Godot Engine: ")
+    model(user_question)
+
+
 
 
 
