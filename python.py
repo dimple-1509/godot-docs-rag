@@ -25,32 +25,31 @@ def model(question,INDEX_PATH = INDEX_PATH):
     docs_and_scores = vectorDB.similarity_search_with_score(question,k=3)
 
 #  --- filtering based on similarity threshold ---
-    SIMILARITY_THRESHOLD = 0.4
+    # SIMILARITY_THRESHOLD = 0.6
 
-    filtered_docs = [
-        doc for doc,score in docs_and_scores if score < SIMILARITY_THRESHOLD
-    ]
+    # filtered_docs = [
+    #     doc for doc,score in docs_and_scores if score < SIMILARITY_THRESHOLD
+    # ]
 
 # -- if no relevant docs found --- 
-    if not filtered_docs:
-        print(" I don't know. This information is not present in the provided documents. ")
-        return
+    # if not filtered_docs:
+    #     print(" I don't know. This information is not present in the provided documents. ")
+    #     return
 
 # -- prepare context text ---
-    context_text = "\n".join(doc.page_content for doc in filtered_docs)
+    context_text = "\n".join(item[0].page_content for item in docs_and_scores)
 
 
 # --- prompt template ---
     SYSTEM_PROMPT = """
     You are a retrieval - based assistant.
 
-    RULES:
-    - Answer ONLY using the PROVIDED CONTEXT.
-    - Search through the context provided properly and carefully.
-    - If the answer is not present in the context, say:
-      "I don't know based on the provided documents. "
-    - Do NOT use prior knowledge.
-    - Do NOT guess.
+   RULES:
+    - If the answer is clearly present in the provided context, answer using it.
+    - If the context is insufficient or irrelevant, you MAY use your general knowledge.
+    - Prefer the provided context over general knowledge when both are available.
+    - If you are unsure or information may be outdated, say so clearly.
+    - Do NOT invent facts
 """
 
 # --- build prompt ---
